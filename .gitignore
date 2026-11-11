@@ -1,0 +1,34 @@
+# Secrets: never commit
+.env
+*.p8
+*.pem
+*.key
+profiles.yml
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# dbt
+dbt/**/target/
+dbt/**/dbt_packages/
+dbt/**/logs/
+
+# Airflow
+airflow/logs/
+airflow/*.db
+airflow/airflow.cfg
+airflow/webserver_config.py
+
+# Generated batch files and local emulator data
+datasets/batches/
+azurite_data/
+__azurite_db_*.json
+__blobstorage__/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
