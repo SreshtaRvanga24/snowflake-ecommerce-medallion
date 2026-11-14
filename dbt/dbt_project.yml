@@ -1,0 +1,23 @@
+name: retail_dbt
+version: "1.0.0"
+config-version: 2
+profile: retail_dbt
+
+model-paths: ["models"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  retail_dbt:
+    silver:
+      +schema: SILVER
+      +materialized: incremental
+      +incremental_strategy: merge
+      # Streams will sit on these tables for Gold. A full refresh recreates
+      # the table and breaks every stream on it, so it is disabled here.
+      +full_refresh: false
+      +copy_grants: true
+      +on_schema_change: append_new_columns

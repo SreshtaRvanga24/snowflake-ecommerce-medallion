@@ -1,0 +1,24 @@
+version: 2
+
+sources:
+  - name: bronze
+    database: RETAIL_DB
+    schema: BRONZE
+    description: Raw, all-VARCHAR copies of the source files plus lineage columns.
+    config:
+      loaded_at_field: INGESTION_TIMESTAMP
+      freshness:
+        warn_after: {count: 48, period: hour}
+    tables:
+      - name: customers
+        identifier: CUSTOMERS
+      - name: orders
+        identifier: ORDERS
+        description: Contains later versions of some orders (same ORDER_ID, newer UPDATED_AT).
+      - name: order_items
+        identifier: ORDER_ITEMS
+      - name: payments
+        identifier: PAYMENTS
+        description: Contains exact duplicate payment rows.
+      - name: order_status_events
+        identifier: ORDER_STATUS_EVENTS

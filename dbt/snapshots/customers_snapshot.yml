@@ -1,0 +1,14 @@
+snapshots:
+  - name: customers_snapshot
+    description: >
+      SCD Type 2 history of SILVER.CUSTOMERS. dbt compares each run's Silver rows
+      with the latest snapshot rows: when UPDATED_AT changes, the old version is
+      closed (dbt_valid_to set) and a new current version is inserted.
+    relation: ref('customers')
+    config:
+      schema: SILVER
+      unique_key: customer_id
+      strategy: timestamp          # a new version only when updated_at changes
+      updated_at: updated_at       # business time, not load time, drives validity
+      dbt_valid_to_current: "to_timestamp_ntz('9999-12-31')"   # current rows get a far-future end date instead of NULL
+      hard_deletes: ignore         # a customer missing from Silver is not treated as deleted

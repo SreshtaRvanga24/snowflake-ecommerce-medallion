@@ -1,0 +1,17 @@
+# Copy to ~/.dbt/profiles.yml (NOT into the repo; profiles.yml is gitignored).
+# Values come from environment variables, loaded from the repo's .env:
+#   set -a; source ../.env; set +a
+retail_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key_path: "{{ env_var('SNOWFLAKE_PRIVATE_KEY_PATH') }}"
+      role: TRANSFORMER_ROLE          # not LOADER_ROLE: dbt builds Silver
+      warehouse: COMPUTE_WH
+      database: RETAIL_DB
+      schema: SILVER
+      threads: 4
+      query_tag: dbt_retail

@@ -1,0 +1,123 @@
+version: 2
+
+# Severity rule of thumb:
+#   error = the grain or keys are broken; downstream Gold would be wrong
+#   warn  = a business-rule or data-quality issue to investigate, not to block on
+
+models:
+  - name: customers
+    description: One row per customer (latest version by UPDATED_AT).
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: email
+        data_tests:
+          - not_null: {config: {severity: warn}}
+      - name: updated_at
+        description: NULL here means the source value could not be parsed.
+        data_tests:
+          - not_null: {config: {severity: warn}}
+
+  - name: orders
+    description: One current row per order; later versions replace earlier ones.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "abs(order_amount - (subtotal - discount_amount)) < 0.01"
+          config: {severity: warn}
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('customers')
+                field: customer_id
+              config: {severity: warn}
+      - name: order_ts
+        data_tests:
+          - not_null: {config: {severity: warn}}
+      - name: order_amount
+        data_tests:
+          - not_null: {config: {severity: warn}}
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+              config: {severity: warn}
+      - name: discount_amount
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+              config: {severity: warn}
+
+  - name: order_items
+    description: One row per order item.
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "abs(line_amount - quantity * unit_price) < 0.01"
+          config: {severity: warn}
+    columns:
+      - name: order_item_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+              config: {severity: warn}
+      - name: quantity
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 1
+              config: {severity: warn}
+      - name: unit_price
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+              config: {severity: warn}
+
+  - name: payments
+    description: One row per payment; exact duplicate rows collapse to one.
+    columns:
+      - name: payment_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+              config: {severity: warn}
+      - name: amount
+        data_tests:
+          - not_null: {config: {severity: warn}}
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+              config: {severity: warn}
+
+  - name: order_status_events
+    description: One row per status event; full history per order is kept.
+    columns:
+      - name: event_id
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('orders')
+                field: order_id
+              config: {severity: warn}
+      - name: event_ts
+        data_tests:
+          - not_null: {config: {severity: warn}}
