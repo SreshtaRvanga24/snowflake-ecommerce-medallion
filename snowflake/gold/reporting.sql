@@ -241,7 +241,7 @@ select
 create or replace view vw_executive_kpis_monthly as
 with payments_per_order as (
     select order_id,
-           count(*)                             as attempts,
+           count(*) as attempts,
            count_if(payment_status = 'SUCCESS') as successes
     from fact_payments
     group by order_id
@@ -257,22 +257,22 @@ order_level as (
         ops.status = 'Fully Paid'                  as is_fully_paid,
         f.delivered, f.hours_to_deliver
     from fact_orders fo
-    join dim_date dd                     on dd.date_key = fo.order_date_key
-    left join dim_customers dc           on dc.customer_sk = fo.customer_sk
-    left join payments_per_order p       on p.order_id = fo.order_id
+    join dim_date dd on dd.date_key = fo.order_date_key
+    left join dim_customers dc on dc.customer_sk = fo.customer_sk
+    left join payments_per_order p on p.order_id = fo.order_id
     left join vw_order_payment_status ops on ops.order_id = fo.order_id
-    left join vw_order_fulfillment f     on f.order_id = fo.order_id
+    left join vw_order_fulfillment f on f.order_id = fo.order_id
 )
 select
     year, month, region, city,
-    sum(order_amount)                                       as net_revenue,
-    count(*)                                                as total_orders,
-    coalesce(sum(attempts), 0)                              as payment_attempts,
-    coalesce(sum(successes), 0)                             as successful_attempts,
-    count_if(is_fully_paid)                                 as fully_paid_orders,
-    count(delivered)                                        as delivered_orders,
-    sum(hours_to_deliver)                                   as total_delivery_hours,
-    count(distinct customer_id)                             as ordering_customers,
+    sum(order_amount) as net_revenue,
+    count(*) as total_orders,
+    coalesce(sum(attempts), 0) as payment_attempts,
+    coalesce(sum(successes), 0) as successful_attempts,
+    count_if(is_fully_paid) as fully_paid_orders,
+    count(delivered) as delivered_orders,
+    sum(hours_to_deliver) as total_delivery_hours,
+    count(distinct customer_id) as ordering_customers,
     round(sum(order_amount) / nullif(count(*), 0), 2)       as avg_order_value,
     round(100 * sum(successes) / nullif(sum(attempts), 0), 2) as payment_success_rate_pct,
     round(100 * count_if(is_fully_paid) / nullif(count(*), 0), 2) as pct_orders_fully_paid,
