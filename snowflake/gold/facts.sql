@@ -11,17 +11,18 @@ select * from silver.order_items;
 
 
 
-create or replace table fact_order_items as (
-    select 
-        order_item_id
-        , order_id
-        , product_id
-        , quantity
-        , unit_price
-        , line_amount
-    from 
-        silver.order_items o
-);
+create or replace table fact_order_items as
+select
+    i.order_item_id,
+    i.order_id,
+    i.product_id,
+    fo.customer_sk,
+    fo.order_date_key,
+    i.quantity,
+    i.unit_price,
+    i.line_amount
+from retail_db.silver.order_items i
+left join fact_orders fo on fo.order_id = i.order_id;
 
 
 create or replace table fact_payments as (
