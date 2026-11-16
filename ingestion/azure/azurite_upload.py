@@ -17,11 +17,12 @@ from azure.storage.blob import BlobServiceClient
 
 # Azurite's well-known development account (public, documented by Microsoft).
 # Inside Docker Compose, replace 127.0.0.1 with the service name, e.g. azurite.
-AZURITE_CONN_STR = (
-    "DefaultEndpointsProtocol=http;"
-    "AccountName=devstoreaccount1;"
+import os
+AZURITE_CONN_STR = os.environ.get(
+    "AZURE_STORAGE_CONNECTION_STRING",
+    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
     "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
-    "BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;"
+    "BlobEndpoint=http://127.0.0.1:10000/devstoreaccount1;",
 )
 
 CONTAINER = "retail-landing"

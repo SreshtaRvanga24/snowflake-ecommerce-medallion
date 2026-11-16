@@ -101,7 +101,7 @@ def build_copy_sql(folder: str, staged_file: str, load_id: str) -> str:
 # DAG
 @dag(
     dag_id="azure_to_bronze",
-    schedule="@daily",
+    schedule=None,
     start_date=pendulum.datetime(2026, 11, 1, tz="UTC"),
     catchup=False,
     max_active_runs=1,

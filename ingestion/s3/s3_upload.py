@@ -23,6 +23,8 @@ from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 load_dotenv()
 
+
+
 # Source file -> landing folder. These are the tables on the S3 path.
 FILES = {
     "CUSTOMERS.csv": "customers",
