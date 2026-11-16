@@ -19,3 +19,5 @@ where p.product_id is null;
 -- Revenue reconciles with Silver: the two numbers must be equal
 select (select sum(order_amount) from fact_orders)          as gold_revenue,
        (select sum(order_amount) from retail_db.silver.orders) as silver_revenue;
+
+
