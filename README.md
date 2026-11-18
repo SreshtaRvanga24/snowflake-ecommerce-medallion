@@ -47,7 +47,7 @@ Gold does not reconcile with Silver, so bad data never looks like a green run.
 
 ## How the design evolved
 
-![Initial design](docs/images/initial_design.png)
+![Initial design](docs/images/architecture.png)
 
 The first sketch, before any constraints were known. What changed and why:
 
