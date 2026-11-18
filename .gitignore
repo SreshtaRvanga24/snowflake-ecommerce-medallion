@@ -32,3 +32,4 @@ __blobstorage__/
 .DS_Store
 .vscode/
 .idea/
+logs/

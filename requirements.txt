@@ -3,6 +3,7 @@ azure-storage-blob
 python-dotenv
 pandas
 streamlit
+boto3
 
 dbt-core==1.12.7
 dbt-snowflake==1.12.5

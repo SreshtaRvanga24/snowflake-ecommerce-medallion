@@ -116,7 +116,7 @@ These were deliberate choices, documented rather than hidden:
 - **Azure Blob is emulated with Azurite.** No Microsoft account was available. The ingestion code is
   identical against real Azure; only the connection string changes.
 - **S3 uses read-only access keys instead of a storage integration.** The intended design (an IAM role
-  assumed by Snowflake, [`04_s3_integration_stage.sql`](snowflake/s3_ingestion/04_s3_integration_stage.sql))
+  assumed by Snowflake, [`04_s3_integration_stage.sql`](snowflake/s3_ingestion/s3_stage_integration.sql))
   was blocked by organization-level policies on the AWS account. The fallback user can only list and read
   one bucket, its key lives only in Snowflake's encrypted stage definition, and it is deleted at project end.
 - **S3 loading is schedule-driven, not Snowpipe auto-ingest.** The bucket's region differs from the
@@ -199,7 +199,7 @@ a customer version, a date and its products.
 ## Screenshots
 
 <!-- Add after capturing: crop out AWS account IDs and email addresses -->
-- `docs/images/airflow_daily_run.png` — the daily DAG, all green
-- `docs/images/scd2_versions.png` — a customer's two versions in `dim_customers`
-- `docs/images/reconciliation.png` — Gold vs Silver checks
-- `docs/images/idempotency_rerun.png` — "2 blobs found, 0 new"
+![Daily DAG, all green](docs/images/airflow_daily_run.png)
+![SCD2: a customer's two versions](docs/images/scd2_versions.png)
+![Gold vs Silver reconciliation](docs/images/reconciliation.png)
+![Idempotent rerun: 2 blobs found, 0 new](docs/images/idempotency_rerun.png)
