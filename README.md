@@ -45,6 +45,24 @@ Gold does not reconcile with Silver, so bad data never looks like a green run.
 
 ---
 
+## How the design evolved
+
+![Initial design](docs/images/initial_design.png)
+
+The first sketch, before any constraints were known. What changed and why:
+
+- **Ingestion paths swapped.** Azure became the Airflow-orchestrated path because Azure Blob is emulated
+  with Azurite, which Snowflake can't reach; S3 became the Snowflake-native path.
+- **S3 is schedule-driven, not event-driven.** The bucket's region differs from the Snowflake account's,
+  so Snowpipe auto-ingest wasn't possible.
+- **One Gold mechanism instead of "Streams/Tasks or Dynamic Tables".** A Task rebuilds the star schema;
+  Dynamic Tables handle only the aggregates on top.
+- **Bronze and Silver relabelled.** The sources are separate entity files, so neither layer is
+  denormalized; Silver is one typed, deduplicated row per entity, plus an SCD2 snapshot of customers.
+- **Consumers narrowed** to a Streamlit dashboard (planned); BI tools stay on the roadmap.
+- **Added during the build:** a daily data generator, Airflow orchestration end to end, audit logging,
+  reconciliation checks, and least-privilege roles.
+
 ## Data model
 
 Kimball star schema in `RETAIL_DB.GOLD`.
