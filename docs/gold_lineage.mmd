@@ -1,0 +1,74 @@
+%% Gold lineage: how aggregates and views are derived.
+%% GitHub renders this inside a ```mermaid block in any .md file;
+%% or paste into https://mermaid.live to export a PNG.
+flowchart LR
+    subgraph SILVER["Silver (dbt)"]
+        S_SNAP[customers_snapshot<br/>SCD2]
+        S_ORD[orders]
+        S_ITM[order_items]
+        S_PAY[payments]
+        S_EVT[order_status_events]
+    end
+
+    subgraph STAR["Gold: star schema"]
+        D_DATE[dim_date]
+        D_CUST[dim_customers<br/>view, SCD2]
+        D_PROD[dim_products]
+        F_ORD[fact_orders]
+        F_ITM[fact_order_items]
+        F_PAY[fact_payments]
+        F_EVT[fact_order_status_events]
+    end
+
+    subgraph REPORT["Gold: reporting"]
+        A_DAILY[[agg_daily_revenue<br/>dynamic table]]
+        A_CUST[[agg_customer_summary<br/>dynamic table]]
+        V_TREND(vw_monthly_sales_trend)
+        V_CAT(vw_category_performance)
+        V_SEG(vw_revenue_by_segment)
+        V_PMH(vw_payment_method_health)
+        V_OPS(vw_order_payment_status)
+        V_FUL(vw_order_fulfillment)
+        V_FSUM(vw_fulfillment_summary)
+        V_EXEC(vw_executive_kpis)
+        V_EXECM(vw_executive_kpis_monthly)
+    end
+
+    S_SNAP --> D_CUST
+    S_ITM --> D_PROD
+    S_ORD --> F_ORD
+    S_ITM --> F_ITM
+    S_PAY --> F_PAY
+    S_EVT --> F_EVT
+    F_ORD --> F_ITM
+
+    F_ORD --> A_DAILY
+    D_DATE --> A_DAILY
+    A_DAILY --> V_TREND
+
+    F_ITM --> V_CAT
+    D_PROD --> V_CAT
+
+    F_ORD --> A_CUST
+    D_CUST --> A_CUST
+    F_ORD --> V_SEG
+    D_CUST --> V_SEG
+
+    F_PAY --> V_PMH
+    F_PAY --> V_OPS
+    F_ORD --> V_OPS
+
+    F_ORD --> V_FUL
+    F_EVT --> V_FUL
+    V_FUL --> V_FSUM
+
+    F_ORD --> V_EXEC
+    F_PAY --> V_EXEC
+    V_OPS --> V_EXEC
+    V_FUL --> V_EXEC
+
+    F_ORD --> V_EXECM
+    D_CUST --> V_EXECM
+    F_PAY --> V_EXECM
+    V_OPS --> V_EXECM
+    V_FUL --> V_EXECM

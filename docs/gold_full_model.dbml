@@ -1,0 +1,294 @@
+// Gold layer, RETAIL_DB.GOLD: star schema + reporting layer
+// Paste into https://dbdiagram.io to render.
+// Reporting objects are DERIVED (built from facts/dims by queries), so they have
+// no foreign keys. Their "Derived from" notes describe the lineage; refs are drawn
+// only where a real key relationship exists (one row per order_id).
+
+Project retail_gold {
+  database_type: 'Snowflake'
+  Note: 'Kimball star schema with a reporting layer of dynamic tables (agg_*) and views (vw_*).'
+}
+
+// ================================================================ dimensions
+
+Table dim_date {
+  date_key integer [pk, note: 'YYYYMMDD']
+  full_date date
+  day integer
+  day_name varchar
+  week_of_year integer
+  month integer
+  month_name varchar
+  quarter integer
+  year integer
+  year_month integer
+  is_weekend boolean
+  Note: 'Static calendar, 2000-01-01 to 2050-12-31'
+}
+
+Table dim_customers {
+  customer_sk varchar [pk, note: 'one per customer version (dbt_scd_id)']
+  customer_id varchar [note: 'natural key, repeats across versions']
+  customer_name varchar
+  email varchar
+  region varchar
+  city varchar
+  segment varchar
+  signup_date date
+  is_active boolean
+  valid_from timestamp
+  valid_to timestamp [note: '9999-12-31 for the current version']
+  is_current boolean
+  Note: 'View. SCD Type 2 over SILVER.CUSTOMERS_SNAPSHOT (dbt snapshot)'
+}
+
+Table dim_products {
+  product_id varchar [pk]
+  product_name varchar
+  category varchar
+  Note: 'SCD Type 1, derived from order items (no product source file)'
+}
+
+// ================================================================ facts
+
+Table fact_orders {
+  order_id varchar [pk]
+  customer_sk varchar
+  order_date_key integer
+  order_ts timestamp
+  order_status varchar
+  sales_channel varchar
+  currency varchar
+  subtotal number
+  discount_amount number
+  order_amount number
+  Note: 'Grain: one row per order'
+}
+
+Table fact_order_items {
+  order_item_id varchar [pk]
+  order_id varchar [note: 'degenerate dimension']
+  product_id varchar
+  customer_sk varchar
+  order_date_key integer
+  quantity integer
+  unit_price number
+  line_amount number
+  Note: 'Grain: one row per order item'
+}
+
+Table fact_payments {
+  payment_id varchar [pk]
+  order_id varchar [note: 'degenerate dimension']
+  customer_sk varchar
+  payment_date_key integer
+  payment_ts timestamp
+  payment_method varchar
+  payment_status varchar
+  currency varchar
+  amount number
+  Note: 'Grain: one row per payment attempt'
+}
+
+Table fact_order_status_events {
+  event_id varchar [pk]
+  order_id varchar [note: 'degenerate dimension']
+  event_date_key integer
+  event_time timestamp
+  status varchar
+  event_source varchar
+  Note: 'Grain: one row per status event'
+}
+
+// ================================================================ reporting: dynamic tables
+
+Table agg_daily_revenue {
+  order_date date
+  sales_channel varchar
+  total_orders integer
+  gross_sales number
+  discounts number
+  net_sales number
+  avg_order_val number
+  indexes { (order_date, sales_channel) [pk] }
+  Note: 'Dynamic table (target lag 1 hour). Grain: date x channel. Derived from fact_orders, dim_date'
+}
+
+Table agg_customer_summary {
+  customer_id varchar [pk]
+  customer_name varchar
+  segment varchar [note: 'current segment']
+  city varchar [note: 'current city']
+  first_order_date date
+  last_order_date date
+  total_orders integer
+  lifetime_value number
+  avg_order_value number
+  Note: 'Dynamic table (target lag 1 hour). Grain: customer (all SCD2 versions rolled up). Derived from fact_orders, dim_customers, dim_date'
+}
+
+// ================================================================ reporting: views
+
+Table vw_monthly_sales_trend {
+  year integer
+  month integer
+  monthly_orders integer
+  monthly_gross_sales number
+  discounts number
+  monthly_net_sales number
+  prev_month_net_sales number
+  mom_growth_pct number
+  avg_order_value number
+  indexes { (year, month) [pk] }
+  Note: 'View. Grain: month. Derived from agg_daily_revenue'
+}
+
+Table vw_category_performance {
+  year integer
+  month integer
+  month_name varchar
+  category varchar
+  orders integer
+  units_sold integer
+  category_gross_sales number [note: 'before order-level discounts']
+  monthly_gross_sales number
+  pct_of_gross number
+  indexes { (year, month, category) [pk] }
+  Note: 'View. Grain: month x category. Derived from fact_order_items, dim_products, dim_date'
+}
+
+Table vw_revenue_by_segment {
+  segment varchar [note: 'current segment']
+  ordered_date date
+  rev number
+  indexes { (segment, ordered_date) [pk] }
+  Note: 'View. Grain: current segment x day. Derived from fact_orders, dim_customers, dim_date'
+}
+
+Table vw_payment_method_health {
+  payment_method varchar
+  year integer
+  month integer
+  total_attempts integer
+  successful_attempts integer
+  failed_attempts integer
+  success_rate number
+  indexes { (payment_method, year, month) [pk] }
+  Note: 'View. Grain: payment method x payment month. Derived from fact_payments, dim_date'
+}
+
+Table vw_order_payment_status {
+  order_id varchar [pk]
+  status varchar [note: 'Fully Paid / Underpaid / Overpaid / Unpaid']
+  Note: 'View. Grain: order. Derived from fact_orders, fact_payments (successful payments summed per order)'
+}
+
+Table vw_order_fulfillment {
+  order_id varchar [pk]
+  sales_channel varchar
+  year integer
+  month integer
+  created timestamp
+  processing timestamp
+  shipped timestamp
+  delivered timestamp
+  cancelled timestamp
+  returned timestamp
+  fulfillment_state varchar
+  hours_to_ship number
+  hours_to_deliver number
+  Note: 'View. Grain: order (status events pivoted). Derived from fact_orders, fact_order_status_events, dim_date'
+}
+
+Table vw_fulfillment_summary {
+  sales_channel varchar
+  year integer
+  month integer
+  total_orders integer
+  delivered_orders integer
+  avg_hours_to_deliver number
+  max_hours_to_deliver number
+  pct_delivered_within_72h number
+  indexes { (sales_channel, year, month) [pk] }
+  Note: 'View. Grain: channel x order month. Derived from fact_orders, vw_order_fulfillment'
+}
+
+Table vw_executive_kpis {
+  total_revenue number
+  active_customers integer
+  total_orders integer
+  avg_order_value number
+  success_payments_rate number
+  pct_orders_fully_paid number
+  avg_hours_to_deliver number
+  Note: 'View. Grain: one row (all time). Derived from fact_orders, dim_customers, fact_payments, vw_order_payment_status, vw_order_fulfillment'
+}
+
+Table vw_executive_kpis_monthly {
+  year integer
+  month integer
+  region varchar [note: 'region at time of order']
+  city varchar [note: 'city at time of order']
+  net_revenue number
+  total_orders integer
+  payment_attempts integer
+  successful_attempts integer
+  fully_paid_orders integer
+  delivered_orders integer
+  total_delivery_hours number
+  ordering_customers integer [note: 'distinct count, not additive across rows']
+  avg_order_value number
+  payment_success_rate_pct number
+  pct_orders_fully_paid number
+  avg_hours_to_deliver number
+  indexes { (year, month, region, city) [pk] }
+  Note: 'View. Grain: order month x region x city. Derived from fact_orders, dim_date, dim_customers, fact_payments, vw_order_payment_status, vw_order_fulfillment'
+}
+
+// ================================================================ groups (drawn as boxes)
+
+TableGroup dimensions {
+  dim_date
+  dim_customers
+  dim_products
+}
+
+TableGroup facts {
+  fact_orders
+  fact_order_items
+  fact_payments
+  fact_order_status_events
+}
+
+TableGroup dynamic_tables {
+  agg_daily_revenue
+  agg_customer_summary
+}
+
+TableGroup reporting_views {
+  vw_monthly_sales_trend
+  vw_category_performance
+  vw_revenue_by_segment
+  vw_payment_method_health
+  vw_order_payment_status
+  vw_order_fulfillment
+  vw_fulfillment_summary
+  vw_executive_kpis
+  vw_executive_kpis_monthly
+}
+
+// ================================================================ relationships
+
+// star schema (many-to-one)
+Ref: fact_orders.customer_sk > dim_customers.customer_sk
+Ref: fact_orders.order_date_key > dim_date.date_key
+Ref: fact_order_items.product_id > dim_products.product_id
+Ref: fact_order_items.customer_sk > dim_customers.customer_sk
+Ref: fact_order_items.order_date_key > dim_date.date_key
+Ref: fact_payments.customer_sk > dim_customers.customer_sk
+Ref: fact_payments.payment_date_key > dim_date.date_key
+Ref: fact_order_status_events.event_date_key > dim_date.date_key
+
+// order-grain views: exactly one row per order (one-to-one)
+Ref: vw_order_payment_status.order_id - fact_orders.order_id
+Ref: vw_order_fulfillment.order_id - fact_orders.order_id
